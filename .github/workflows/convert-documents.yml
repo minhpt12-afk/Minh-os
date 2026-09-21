@@ -1,0 +1,39 @@
+name: Convert documents to Markdown
+
+on:
+  push:
+    paths:
+      - "documents/**"
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get repository files
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install MarkItDown
+        run: pip install "markitdown[pdf,docx,pptx,xlsx]"
+
+      - name: Convert documents
+        run: |
+          mkdir -p markdown
+          find documents -type f \( -iname "*.pdf" -o -iname "*.docx" -o -iname "*.xlsx" -o -iname "*.pptx" \) \
+            -exec sh -c 'markitdown "$1" -o "markdown/$(basename "${1%.*}").md"' _ {} \;
+
+      - name: Save Markdown files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add markdown/
+          git diff --cached --quiet || git commit -m "docs: convert documents to Markdown"
+          git push
